@@ -2,386 +2,127 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>TaxSaver - Forfettario</title>
-  <meta name="theme-color" content="#0f172a">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaxSaver</title>
   <style>
-    :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --card-sub: #162032;
-      --accent-green: #10b981;
-      --accent-yellow: #f59e0b;
-      --accent-purple: #a855f7;
-      --accent-blue: #38bdf8;
-      --accent-red: #ef4444;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --border: #334155;
-    }
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      padding: 16px;
-      padding-bottom: 60px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 4px 0;
-    }
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .logo-icon {
-      background-color: var(--accent-green);
-      color: #0f172a;
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-    }
-    .header-title h1 {
-      font-size: 20px;
-      font-weight: 700;
-    }
-    .header-title p {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-    .header-actions {
-      display: flex;
-      gap: 8px;
-    }
-    .icon-btn {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .main-accantonamento {
-      background: linear-gradient(145deg, #162c3d, #122030);
-      border: 1px solid #1e475e;
-      border-radius: 20px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .acc-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .acc-label {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--accent-green);
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-    .acc-badge {
-      background-color: rgba(16, 185, 129, 0.15);
-      color: var(--accent-green);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 20px;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    .acc-amount-box {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-    }
-    .acc-amount {
-      font-size: 36px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
-    .acc-sub {
-      font-size: 13px;
-      color: var(--text-muted);
-    }
-    .breakdown-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      padding-top: 14px;
-    }
-    .breakdown-item {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .breakdown-item span:first-child {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-    .breakdown-item span:last-child {
-      font-size: 15px;
-      font-weight: 700;
-    }
-    .card {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .soglia-header {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      font-weight: 600;
-    }
-    .progress-bar-bg {
-      background-color: var(--card-sub);
-      height: 8px;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    .progress-bar-fill {
-      background-color: var(--accent-green);
-      height: 100%;
-      width: 0%;
-      transition: width 0.3s ease;
-    }
-    .soglia-status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--accent-green);
-    }
-    .scadenze-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .scadenza-box {
-      background-color: var(--card-sub);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .scadenza-box h4 {
-      font-size: 12px;
-      color: var(--text-muted);
-      font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .scadenza-val {
-      font-size: 17px;
-      font-weight: 700;
-    }
-    .scadenza-sub {
-      font-size: 10px;
-      color: var(--text-muted);
-    }
-    .info-alert {
-      background-color: rgba(56, 189, 248, 0.08);
-      border-left: 3px solid var(--accent-blue);
-      border-radius: 8px;
-      padding: 10px;
-      font-size: 11.5px;
-      line-height: 1.4;
-      color: #bae6fd;
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-    }
-    .info-alert i {
-      margin-top: 2px;
-    }
-    .section-title {
-      font-size: 15px;
-      font-weight: 700;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .form-group label {
-      font-size: 12px;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-    .form-control {
-      background: var(--card-sub);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      color: var(--text);
-      font-size: 15px;
-      outline: none;
-      width: 100%;
-      -webkit-appearance: none;
-    }
-    .form-control:focus {
-      border-color: var(--accent-green);
-    }
-    input[type="date"].form-control {
-      color-scheme: dark;
-      min-height: 48px;
-    }
-    .btn-submit {
-      background: var(--accent-green);
-      color: #0f172a;
-      border: none;
-      padding: 15px;
-      border-radius: 12px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 6px;
-      touch-action: manipulation;
-    }
-    .btn-submit:active {
-      opacity: 0.85;
-      transform: scale(0.98);
-    }
-    .invoices-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .invoice-card {
-      background-color: var(--card-sub);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 12px;
-      padding: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .inv-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      max-width: 60%;
-    }
-    .inv-desc {
-      font-size: 14px;
-      font-weight: 600;
-      word-break: break-word;
-    }
-    .inv-meta {
-      font-size: 11px;
-      color: var(--text-muted);
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-    .inv-right {
-      text-align: right;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .inv-amount {
-      font-size: 15px;
-      font-weight: 700;
-    }
-    .inv-tax {
-      font-size: 11px;
-      color: var(--accent-green);
-    }
-    .del-btn {
-      color: #64748b;
-      cursor: pointer;
-      padding: 10px;
-      font-size: 16px;
-    }
-    .del-btn:hover {
-      color: var(--accent-red);
-    }
-    .empty-state {
-      text-align: center;
-      padding: 24px;
-      color: var(--text-muted);
-      font-size: 13px;
-    }
-    .toast-msg {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #10b981;
-      color: #0f172a;
-      font-weight: 700;
-      padding: 10px 18px;
-      border-radius: 30px;
-      font-size: 14px;
-      display: none;
-      z-index: 1000;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { background: #0f172a; color: #f8fafc; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+    .card { background: #1e293b; border-radius: 14px; padding: 16px; border: 1px solid #334155; }
+    .hero { background: linear-gradient(135deg, #132d3f, #0f1f2e); border: 1px solid #0284c7; }
+    .title { font-size: 13px; font-weight: bold; color: #38bdf8; text-transform: uppercase; margin-bottom: 6px; }
+    .big-num { font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 10px; }
+    .sub-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; border-top: 1px solid #334155; padding-top: 10px; font-size: 12px; }
+    .sub-grid div { display: flex; flex-direction: column; }
+    .sub-grid span { font-weight: bold; font-size: 14px; margin-top: 2px; }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; font-weight: 600; }
+    input, select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 15px; outline: none; }
+    input:focus { border-color: #10b981; }
+    .btn { width: 100%; background: #10b981; color: #0f172a; font-weight: bold; font-size: 16px; border: none; padding: 14px; border-radius: 10px; cursor: pointer; }
+    .btn:active { opacity: 0.8; }
+    .invoice-item { background: #0f172a; border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
+    .del-btn { background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+    .scad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+    .scad-box { background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid #334155; }
+    .scad-box h4 { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+    .scad-box span { font-size: 16px; font-weight: bold; color: #38bdf8; }
   </style>
 </head>
 <body>
 
-  <div id="toast" class="toast-msg"><i class="fa-solid fa-check"></i> Fattura registrata!</div>
+  <!-- SCHEDA ACCANTONAMENTO -->
+  <div class="card hero">
+    <div class="title">Totale da Accantonare</div>
+    <div class="big-num" id="tot-acc">0,00 €</div>
+    <div class="sub-grid">
+      <div>INPS (24%)<span id="tot-inps" style="color: #38bdf8;">0,00 €</span></div>
+      <div>Imposta (5%)<span id="tot-imposta" style="color: #f59e0b;">0,00 €</span></div>
+      <div>Bolli (2€)<span id="tot-bolli" style="color: #a855f7;">0,00 €</span></div>
+    </div>
+  </div>
 
-  <header>
-    <div class="header-left">
-      <div class="logo-icon"><i class="fa-solid fa-piggy-bank"></i></div>
-      <div class="header-title">
-        <h1>TaxSaver</h1>
-        <p id="sub-header-info">Forfettario 5% (Coeff. 86%) • INPS 24%</p>
+  <!-- SCADENZE F24 -->
+  <div class="card">
+    <div class="title" style="color: #10b981;">Scadenze F24 (Saldo + Acconti)</div>
+    <div class="scad-grid">
+      <div class="scad-box">
+        <h4>Giugno (Saldo + 50%)</h4>
+        <span id="scad-giu">0,00 €</span>
+      </div>
+      <div class="scad-box">
+        <h4>Novembre (50%)</h4>
+        <span id="scad-nov">0,00 €</span>
       </div>
     </div>
-    <div class="header-actions">
-      <button class="icon-btn" onclick="exportCSV()"><i class="fa-solid fa-file-csv"></i> CSV</button>
+    <div style="font-size: 11px; color: #94a3b8; margin-top: 8px;">
+      Soglia Forfettario: <strong id="tot-fatturato" style="color:#fff;">0,00 €</strong> / 85.000 €
     </div>
-  </header>
+  </div>
 
-  <!-- TOTALE ACCANTONAMENTO -->
-  <div class="main-accantonamento">
-    <div class="acc-header">
-      <span class="acc-label">Totale da Accantonare</span>
-      <span class="acc-badge" id="rate-badge">~24.8% sui ricavi</span>
+  <!-- REGISTRAZIONE -->
+  <div class="card">
+    <div class="title" style="color: #10b981;">Registra Nuova Fattura</div>
+    
+    <div class="form-group">
+      <label>Importo Lordo (€)</label>
+      <input type="text" id="amount" placeholder="Es. 2294.13" inputmode="decimal">
     </div>
-    <div class="acc-amount-box
+
+    <div class="form-group">
+      <label>Descrizione / Cliente</label>
+      <input type="text" id="desc" placeholder="Descrizione lavoro">
+    </div>
+
+    <div class="form-group">
+      <label>Data Incasso</label>
+      <input type="date" id="date">
+    </div>
+
+    <div class="form-group">
+      <label>Marca da Bollo (2 €)</label>
+      <select id="bollo">
+        <option value="auto">Automatica (> 77,47 €)</option>
+        <option value="yes">Sì (addebito)</option>
+        <option value="no">No</option>
+      </select>
+    </div>
+
+    <button type="button" class="btn" id="btn-salva">Registra Fattura</button>
+  </div>
+
+  <!-- LISTA FATTURE -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <div class="title" style="margin:0;">Elenco Fatture</div>
+      <button onclick="esportaCSV()" style="background:#334155; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">Scarica CSV</button>
+    </div>
+    <div id="lista-fatture"></div>
+  </div>
+
+  <script>
+    let fatture = [];
+    try {
+      fatture = JSON.parse(localStorage.getItem('ts_f')) || [];
+    } catch(e) { fatture = []; }
+
+    function getOggi() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function aggiorna() {
+      const totale = fatture.reduce((acc, f) => acc + f.importo, 0);
+      const bolli = fatture.filter(f => f.bollo).length * 2.0;
+
+      const imponibile = totale * 0.86; // Coeff 86%
+      const inps = imponibile * 0.24;   // INPS Separata 24%
+      const nettoFisc = Math.max(0, imponibile - inps);
+      const imposta = nettoFisc * 0.05; // 5% nuova attività
+
+      const accantonamento = inps + imposta + bolli;
+      const acconto = inps + imposta;
+      const rataGiu = inps + imposta + (acconto * 0.5) + bolli;
+      const rataNov = acconto * 0.5;
+
+      document.getElementById('tot-acc').innerText = accantonamento.toLocaleString('it-IT', {style:'currency', currency:'EUR'});
+      document.getElementById('tot-inps').innerText = inps.toLocaleString('it-IT
