@@ -154,6 +154,22 @@
 
   <div id="view-error" class="card hidden" style="margin-top:40px; color:#fca5a5; font-size:14px;"></div>
 
+  <script>
+    // Diagnostica: se qualcosa si rompe, mostra l'errore invece di una pagina vuota
+    (function () {
+      function mostra(t) {
+        var d = document.getElementById('diag');
+        if (!d) {
+          d = document.createElement('div'); d.id = 'diag';
+          d.style.cssText = 'background:#450a0a;color:#fecaca;padding:12px;border-radius:10px;font-size:12px;margin-top:20px;word-break:break-word';
+          document.body.appendChild(d);
+        }
+        d.textContent = 'Errore: ' + t;
+      }
+      window.addEventListener('error', function (e) { mostra((e.message || 'caricamento script fallito') + (e.filename ? ' [' + e.filename.split('/').pop() + ']' : '')); }, true);
+      window.addEventListener('unhandledrejection', function (e) { mostra(String(e.reason && e.reason.message || e.reason)); });
+    })();
+  </script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
@@ -407,4 +423,111 @@
       $('btn-migrate').disabled = true;
       try {
         for (let i = 0; i < locali.length; i += 400) {
-          const batch = writeBatch(d
+          const batch = writeBatch(db);
+          locali.slice(i, i + 400).forEach(f => {
+            batch.set(doc(colFatture()), {
+              importo: f.importo,
+              desc: f.desc || '',
+              data: f.data || getOggi(),
+              bollo: !!f.bollo,
+              creato: Date.now()
+            });
+          });
+          await batch.commit();
+        }
+        localStorage.removeItem(LOCAL_KEY);
+        mostraMsg('Fatture importate nel cloud ✓', false);
+        controllaMigrazione();
+      } catch (e) {
+        mostraMsg('Errore importazione: ' + e.message, true);
+      }
+      $('btn-migrate').disabled = false;
+    });
+
+    // ---------- registrazione ----------
+    $('btn-salva').addEventListener('click', async () => {
+      const importo = parseImporto($('amount').value);
+      const desc = $('desc').value.trim();
+      const data = $('date').value || getOggi();
+      const bolloSel = $('bollo').value;
+
+      if (isNaN(importo) || importo <= 0) { mostraMsg('Inserisci un importo valido.', true); return; }
+      const bollo = bolloSel === 'yes' || (bolloSel === 'auto' && importo > 77.47);
+
+      $('btn-salva').disabled = true;
+      try {
+        await addDoc(colFatture(), { importo, desc, data, bollo, creato: Date.now() });
+        $('amount').value = '';
+        $('desc').value = '';
+        $('bollo').value = 'auto';
+        annoSel = parseInt(data.slice(0, 4)) || annoSel;
+        mostraMsg('Fattura registrata ✓', false);
+      } catch (e) {
+        mostraMsg('Errore salvataggio: ' + e.message, true);
+      }
+      $('btn-salva').disabled = false;
+    });
+
+    // ---------- CSV ----------
+    $('btn-csv').addEventListener('click', () => {
+      if (!fatture.length) { mostraMsg('Nessuna fattura da esportare.', true); return; }
+      const righe = ['Data;Importo;Descrizione;Bollo'];
+      fatture.slice().sort((a, b) => (a.data > b.data ? 1 : -1)).forEach(f => {
+        righe.push([
+          f.data,
+          String(f.importo).replace('.', ','),
+          '"' + String(f.desc || '').replace(/"/g, '""') + '"',
+          f.bollo ? 'Sì' : 'No'
+        ].join(';'));
+      });
+      const blob = new Blob(['\ufeff' + righe.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'fatture.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+
+    // ---------- login / logout ----------
+    async function login() {
+      const email = $('email').value.trim();
+      const pass = $('password').value;
+      const msg = $('login-msg');
+      msg.style.color = '#ef4444';
+      if (!email || !pass) { msg.textContent = 'Inserisci email e password.'; return; }
+      $('btn-login').disabled = true;
+      msg.textContent = '';
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } catch (e) {
+        const known = ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'];
+        msg.textContent = known.includes(e.code) ? 'Email o password non corrette.'
+          : e.code === 'auth/too-many-requests' ? 'Troppi tentativi, riprova più tardi.'
+          : 'Errore di accesso: ' + (e.code || e.message);
+      }
+      $('btn-login').disabled = false;
+    }
+
+    $('btn-login').addEventListener('click', login);
+    $('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+    $('btn-logout').addEventListener('click', () => signOut(auth));
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        uid = user.uid;
+        $('user-email').textContent = user.email;
+        if (!$('date').value) $('date').value = getOggi();
+        show('view-app');
+        avviaSync();
+      } else {
+        uid = null;
+        if (unsub) { unsub(); unsub = null; }
+        if (unsubSet) { unsubSet(); unsubSet = null; }
+        fatture = [];
+        $('password').value = '';
+        show('view-login');
+      }
+    });
+  </script>
+</body>
+</html>
