@@ -1,0 +1,532 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TaxSaver">
+  <title>TaxSaver Forfettario - Gestione Accantonamenti</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    body {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    input, select, textarea {
+      user-select: text;
+    }
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom, 1.5rem);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-black">
+
+  <!-- Header Mobile App -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center space-x-2">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-emerald-500/20">
+        <i class="fa-solid fa-piggy-bank text-lg"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-base tracking-tight text-white leading-tight">TaxSaver</h1>
+        <p class="text-[11px] text-slate-400">Forfettario 5% • INPS 24%</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-2">
+      <button onclick="openSettingsModal()" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition" title="Impostazioni">
+        <i class="fa-solid fa-sliders text-xs"></i>
+      </button>
+      <button onclick="exportToCSV()" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition" title="Esporta CSV Commercialista">
+        <i class="fa-solid fa-file-csv text-xs"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Contenitore Principale -->
+  <main class="flex-1 max-w-lg w-full mx-auto p-4 space-y-4">
+
+    <!-- Card Saldo Accantonamento Totale -->
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/30 p-5 shadow-xl shadow-black/40">
+      <div class="flex justify-between items-start">
+        <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400/90">Totale da Accantonare</span>
+        <span id="effectiveTaxRateBadge" class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium border border-emerald-500/20">
+          ~24.8% sui ricavi
+        </span>
+      </div>
+
+      <div class="mt-2 flex items-baseline space-x-2">
+        <span class="text-3xl font-extrabold text-white tracking-tight" id="totalToSave">0,00 €</span>
+        <span class="text-xs text-slate-400">prudenziale</span>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-3 gap-2 text-center">
+        <div>
+          <p class="text-[10px] text-slate-400 uppercase tracking-wider">INPS (24%)</p>
+          <p class="text-sm font-bold text-teal-400 mt-0.5" id="totalInps">0 €</p>
+        </div>
+        <div>
+          <p class="text-[10px] text-slate-400 uppercase tracking-wider">Imposta (5%)</p>
+          <p class="text-sm font-bold text-amber-400 mt-0.5" id="totalImposta">0 €</p>
+        </div>
+        <div>
+          <p class="text-[10px] text-slate-400 uppercase tracking-wider">Bolli (2 €)</p>
+          <p class="text-sm font-bold text-purple-400 mt-0.5" id="totalBolli">0 €</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monitoraggio Soglia 85.000 € -->
+    <div class="bg-slate-900/80 rounded-2xl p-4 border border-slate-800">
+      <div class="flex justify-between items-center text-xs mb-1.5">
+        <span class="text-slate-400 font-medium">Soglia Forfettario (85.000 €)</span>
+        <span class="font-bold text-slate-200" id="thresholdProgressLabel">0 € / 85.000 €</span>
+      </div>
+      <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+        <div id="thresholdBar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+      </div>
+      <p id="thresholdNotice" class="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i> Regime forfettario pienamente operativo
+      </p>
+    </div>
+
+    <!-- Simulatore Calendario Scadenze Fisco (Giugno / Novembre) -->
+    <div class="bg-slate-900/80 rounded-2xl p-4 border border-slate-800 space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <i class="fa-regular fa-calendar-check text-emerald-400"></i> Ripartizione Scadenze F24
+        </h2>
+        <span class="text-[10px] text-slate-500">Saldo + Acconti standard</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="font-medium text-slate-300">Giugno (Saldo + 1° Acc.)</span>
+            <i class="fa-solid fa-sun text-amber-400 text-[10px]"></i>
+          </div>
+          <p class="text-base font-bold text-slate-100" id="scadenzaGiugno">0,00 €</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">Saldo anno + 50% Acconti</p>
+        </div>
+
+        <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="font-medium text-slate-300">30 Novembre (2° Acc.)</span>
+            <i class="fa-solid fa-snowflake text-sky-400 text-[10px]"></i>
+          </div>
+          <p class="text-base font-bold text-slate-100" id="scadenzaNovembre">0,00 €</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">50% Acconto imposta/INPS</p>
+        </div>
+      </div>
+      <div class="text-[10px] text-slate-500 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
+        <i class="fa-solid fa-circle-info text-sky-400 mr-1"></i> <strong>Agevolazione contratto scuola:</strong> L'aliquota INPS Gestione Separata è bloccata al 24% (anziché 26,07%) grazie alla contribuzione dipendente.
+      </div>
+    </div>
+
+    <!-- Bottone Aggiungi Fattura Rapida -->
+    <div>
+      <button onclick="openAddInvoiceModal()" class="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center space-x-2 shadow-lg shadow-emerald-500/20 transition">
+        <i class="fa-solid fa-plus text-base"></i>
+        <span>Registra Nuova Fattura / Incasso</span>
+      </button>
+    </div>
+
+    <!-- Lista Ultime Fatture Emesse -->
+    <div class="space-y-2">
+      <div class="flex justify-between items-center px-1">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Fatture Registrate</h3>
+        <span class="text-xs text-slate-500" id="invoicesCount">0 elementi</span>
+      </div>
+
+      <div id="invoicesList" class="space-y-2">
+        <!-- Render dinamico da JS -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal Aggiungi Fattura -->
+  <div id="addInvoiceModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-base text-white">Nuova Fattura Emessa</h3>
+        <button onclick="closeAddInvoiceModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="invoiceForm" onsubmit="handleSaveInvoice(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Cliente / Oggetto</label>
+          <input type="text" id="invoiceClient" required placeholder="Es. Istituto Scolastico o Cliente Privato" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Importo Compenso (€)</label>
+            <input type="number" step="0.01" min="0.01" id="invoiceAmount" required placeholder="1200.00" oninput="previewTaxBreakdown()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Data Incasso / Fattura</label>
+            <input type="date" id="invoiceDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <!-- Box Anteprima Bollo e Calcolo -->
+        <div class="bg-slate-950/80 rounded-xl p-3 border border-slate-800/80 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-stamp text-purple-400"></i> Marca da Bollo (2 €):
+            </span>
+            <span id="previewBolloBadge" class="font-mono text-slate-400 font-semibold">Non dovuta (&lt; 77,47 €)</span>
+          </div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400">Accantonamento istantaneo raccomandato:</span>
+            <span id="previewAccantonamento" class="font-mono font-bold text-emerald-400">0,00 €</span>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl transition">
+          Salva e Calcola
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Impostazioni / Parametri Fiscali -->
+  <div id="settingsModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-base text-white">Parametri Fiscali Personali</h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="settingsForm" onsubmit="handleSaveSettings(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Coefficiente di Redditività (%)</label>
+          <select id="configCoef" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <option value="86">86% (Costruzioni, Impianti, Commercio al dettaglio)</option>
+            <option value="78">78% (Professioni e Consulenze intellettuali ordinarie)</option>
+            <option value="67">67% (Servizi alle imprese e altri professionali)</option>
+            <option value="40">40% (Commercio all'ingrosso e intermediari)</option>
+          </select>
+          <p class="text-[10px] text-slate-500 mt-1">Definito dal codice ATECO della tua Partita IVA.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Aliquota Imposta Sostitutiva</label>
+          <div class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-emerald-400 font-semibold flex justify-between items-center">
+            <span>5% (Nuova Attività - Start-up primi 5 anni)</span>
+            <i class="fa-solid fa-lock text-xs text-slate-500"></i>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Inquadramento INPS</label>
+          <div class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-teal-400 font-semibold flex justify-between items-center">
+            <span>24% (Gestione Separata con contratto a scuola)</span>
+            <i class="fa-solid fa-lock text-xs text-slate-500"></i>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Aliquota ridotta in quanto titolare di altra copertura previdenziale attiva.</p>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 flex justify-between">
+          <button type="button" onclick="clearAllData()" class="text-xs text-rose-400 hover:text-rose-300 py-2">
+            Azzera tutti i dati
+          </button>
+          <button type="submit" class="bg-emerald-500 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs">
+            Salva Parametri
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Stato dell'applicazione e persistenza
+    const APP_CONFIG_KEY = "taxsaver_config_v1";
+    const APP_INVOICES_KEY = "taxsaver_invoices_v1";
+
+    let state = {
+      config: {
+        coef: 86, // Default per impiantistica/artigianato (oppure 78/67 per servizi)
+        taxRate: 0.05, // 5% start-up
+        inpsRate: 0.24 // 24% per chi ha contratto scuola
+      },
+      invoices: []
+    };
+
+    // Inizializzazione
+    function init() {
+      const savedConfig = localStorage.getItem(APP_CONFIG_KEY);
+      if (savedConfig) {
+        state.config = JSON.parse(savedConfig);
+      }
+      const savedInvoices = localStorage.getItem(APP_INVOICES_KEY);
+      if (savedInvoices) {
+        state.invoices = JSON.parse(savedInvoices);
+      }
+
+      // Imposta data odierna nel modal
+      document.getElementById('invoiceDate').valueAsDate = new Date();
+      document.getElementById('configCoef').value = state.config.coef;
+
+      recalculateAndRender();
+    }
+
+    // Calcolo contabile per singolo importo
+    function calculateInvoiceBreakdown(amount) {
+      const coef = state.config.coef / 100;
+      const needsBollo = amount > 77.47;
+      const bollo = needsBollo ? 2.0 : 0.0;
+
+      // Imponibile previdenziale e fiscale
+      const baseLorda = amount * coef;
+      
+      // INPS Gestione Separata (24%)
+      const inps = baseLorda * state.config.inpsRate;
+
+      // Nel forfettario l'INPS versata è deducibile dall'imponibile dell'imposta sostitutiva
+      // A fini di accantonamento prudenziale dell'anno in corso:
+      const baseImponibileNetta = Math.max(0, baseLorda - inps);
+      const impostaSostitutiva = baseImponibileNetta * state.config.taxRate;
+
+      const totaleAccantonamento = inps + impostaSostitutiva + bollo;
+
+      return {
+        baseLorda,
+        inps,
+        impostaSostitutiva,
+        bollo,
+        totaleAccantonamento,
+        needsBollo
+      };
+    }
+
+    // Ricalcolo globale e aggiornamento UI
+    function recalculateAndRender() {
+      let totalTurnover = 0;
+      let totalInps = 0;
+      let totalImposta = 0;
+      let totalBolli = 0;
+
+      state.invoices.forEach(inv => {
+        const b = calculateInvoiceBreakdown(inv.amount);
+        totalTurnover += inv.amount;
+        totalInps += b.inps;
+        totalImposta += b.impostaSostitutiva;
+        totalBolli += b.bollo;
+      });
+
+      const totalAccantonare = totalInps + totalImposta + totalBolli;
+      const effectiveRate = totalTurnover > 0 ? ((totalAccantonare / totalTurnover) * 100).toFixed(1) : "24.8";
+
+      // Aggiornamento Box Principale
+      document.getElementById('totalToSave').textContent = formatCurrency(totalAccantonare);
+      document.getElementById('totalInps').textContent = formatCurrency(totalInps);
+      document.getElementById('totalImposta').textContent = formatCurrency(totalImposta);
+      document.getElementById('totalBolli').textContent = formatCurrency(totalBolli);
+      document.getElementById('effectiveTaxRateBadge').textContent = `~${effectiveRate}% sui ricavi`;
+
+      // Soglia 85k
+      const maxThreshold = 85000;
+      const pct = Math.min(100, (totalTurnover / maxThreshold) * 100);
+      const bar = document.getElementById('thresholdBar');
+      bar.style.width = `${pct}%`;
+      document.getElementById('thresholdProgressLabel').textContent = `${formatCurrency(totalTurnover)} / 85.000 €`;
+
+      const notice = document.getElementById('thresholdNotice');
+      if (totalTurnover > 85000) {
+        bar.className = "bg-rose-500 h-2.5 rounded-full transition-all duration-500";
+        notice.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-500"></i> <span class="text-rose-400 font-semibold">Attenzione! Soglia 85.000 € superata. Uscita dal forfettario.</span>`;
+      } else if (totalTurnover > 70000) {
+        bar.className = "bg-amber-500 h-2.5 rounded-full transition-all duration-500";
+        notice.innerHTML = `<i class="fa-solid fa-circle-exclamation text-amber-400"></i> <span class="text-amber-400 font-medium">Attenzione: Ti stai avvicinando al limite di 85.000 €.</span>`;
+      } else {
+        bar.className = "bg-emerald-500 h-2.5 rounded-full transition-all duration-500";
+        notice.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> Regime forfettario pienamente operativo`;
+      }
+
+      // Simulazione Scadenze F24 (Saldo + Acconti)
+      // Acconti = 100% dell'imposta e dell'INPS dell'anno in corso (metodo storico)
+      // Giugno = Saldo (Imposta + INPS) + 50% 1° Acconto
+      // Novembre = 50% 2° Acconto
+      const saldoImposteInps = totalImposta + totalInps;
+      const accontoTotale = saldoImposteInps; // 100% acconto storico
+      const scadenzaGiu = saldoImposteInps + (accontoTotale * 0.50) + totalBolli;
+      const scadenzaNov = accontoTotale * 0.50;
+
+      document.getElementById('scadenzaGiugno').textContent = formatCurrency(scadenzaGiu);
+      document.getElementById('scadenzaNovembre').textContent = formatCurrency(scadenzaNov);
+
+      // Render lista fatture
+      renderInvoicesList();
+    }
+
+    function renderInvoicesList() {
+      const container = document.getElementById('invoicesList');
+      const countBadge = document.getElementById('invoicesCount');
+      countBadge.textContent = `${state.invoices.length} fattur${state.invoices.length === 1 ? 'a' : 'e'}`;
+
+      if (state.invoices.length === 0) {
+        container.innerHTML = `
+          <div class="bg-slate-900/40 rounded-2xl p-6 text-center border border-dashed border-slate-800 text-slate-500 text-xs">
+            <i class="fa-solid fa-receipt text-2xl mb-2 text-slate-600 block"></i>
+            Nessuna fattura inserita.<br>Tocca il pulsante sopra per iniziare a monitorare.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = state.invoices.map((inv, index) => {
+        const b = calculateInvoiceBreakdown(inv.amount);
+        return `
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between">
+            <div class="space-y-0.5">
+              <div class="flex items-center space-x-2">
+                <span class="font-semibold text-sm text-slate-100">${escapeHtml(inv.client)}</span>
+                ${b.needsBollo ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium">Bollo 2€</span>' : ''}
+              </div>
+              <p class="text-[11px] text-slate-400 font-mono">${inv.date} • Fattura: <span class="font-bold text-slate-300">${formatCurrency(inv.amount)}</span></p>
+              <p class="text-[10px] text-emerald-400/90 font-medium">
+                Accantona: <strong>${formatCurrency(b.totaleAccantonamento)}</strong> (INPS: ${formatCurrency(b.inps)} | Fisco: ${formatCurrency(b.impostaSostitutiva)})
+              </p>
+            </div>
+            <button onclick="deleteInvoice(${index})" class="text-slate-500 hover:text-rose-400 p-2 text-sm transition">
+              <i class="fa-regular fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Gestione Eventi e Modali
+    function openAddInvoiceModal() {
+      document.getElementById('addInvoiceModal').classList.remove('hidden');
+      document.getElementById('invoiceAmount').focus();
+    }
+
+    function closeAddInvoiceModal() {
+      document.getElementById('addInvoiceModal').classList.add('hidden');
+      document.getElementById('invoiceForm').reset();
+      document.getElementById('invoiceDate').valueAsDate = new Date();
+      previewTaxBreakdown();
+    }
+
+    function openSettingsModal() {
+      document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    function previewTaxBreakdown() {
+      const val = parseFloat(document.getElementById('invoiceAmount').value) || 0;
+      const b = calculateInvoiceBreakdown(val);
+      const bolloBadge = document.getElementById('previewBolloBadge');
+      
+      if (b.needsBollo) {
+        bolloBadge.textContent = "Applicata (+2,00 €)";
+        bolloBadge.className = "font-mono text-purple-400 font-bold";
+      } else {
+        bolloBadge.textContent = "Non dovuta (< 77,47 €)";
+        bolloBadge.className = "font-mono text-slate-500 font-normal";
+      }
+
+      document.getElementById('previewAccantonamento').textContent = formatCurrency(b.totaleAccantonamento);
+    }
+
+    function handleSaveInvoice(e) {
+      e.preventDefault();
+      const client = document.getElementById('invoiceClient').value.trim();
+      const amount = parseFloat(document.getElementById('invoiceAmount').value);
+      const date = document.getElementById('invoiceDate').value;
+
+      if (!client || isNaN(amount) || amount <= 0) return;
+
+      state.invoices.unshift({
+        id: Date.now(),
+        client,
+        amount,
+        date
+      });
+
+      localStorage.setItem(APP_INVOICES_KEY, JSON.stringify(state.invoices));
+      closeAddInvoiceModal();
+      recalculateAndRender();
+    }
+
+    function deleteInvoice(index) {
+      if (confirm("Vuoi rimuovere questa fattura?")) {
+        state.invoices.splice(index, 1);
+        localStorage.setItem(APP_INVOICES_KEY, JSON.stringify(state.invoices));
+        recalculateAndRender();
+      }
+    }
+
+    function handleSaveSettings(e) {
+      e.preventDefault();
+      state.config.coef = parseFloat(document.getElementById('configCoef').value);
+      localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(state.config));
+      closeSettingsModal();
+      recalculateAndRender();
+    }
+
+    function clearAllData() {
+      if (confirm("Attenzione: vuoi eliminare tutte le fatture registrate? Questa azione non può essere annullata.")) {
+        state.invoices = [];
+        localStorage.removeItem(APP_INVOICES_KEY);
+        closeSettingsModal();
+        recalculateAndRender();
+      }
+    }
+
+    // Export Commercialista in formato CSV
+    function exportToCSV() {
+      if (state.invoices.length === 0) {
+        alert("Nessuna fattura da esportare.");
+        return;
+      }
+
+      let csv = "Data;Cliente;Compenso Lordo (€);Marca da Bollo (€);Base Imponibile ATECO (€);INPS Gestione Separata (24%) (€);Imposta Sostitutiva (5%) (€);Totale da Accantonare (€)\n";
+
+      state.invoices.forEach(inv => {
+        const b = calculateInvoiceBreakdown(inv.amount);
+        csv += `"${inv.date}";"${inv.client.replace(/"/g, '""')}";${inv.amount.toFixed(2)};${b.bollo.toFixed(2)};${b.baseLorda.toFixed(2)};${b.inps.toFixed(2)};${b.impostaSostitutiva.toFixed(2)};${b.totaleAccantonamento.toFixed(2)}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Riepilogo_Fatture_Forfettario_${new Date().getFullYear()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Utility di formattazione
+    function formatCurrency(val) {
+      return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(val);
+    }
+
+    function escapeHtml(string) {
+      const entityMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      return String(string).replace(/[&<>"']/g, s => entityMap[s]);
+    }
+
+    // Avvio al caricamento
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
+```
