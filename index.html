@@ -73,12 +73,18 @@
       <button type="button" id="btn-migrate">Importa nel cloud</button>
     </div>
 
+    <div class="card" style="display:flex; align-items:center; gap:12px;">
+      <div style="flex:0 0 110px;"><label for="anno">Anno</label><select id="anno"></select></div>
+      <div id="anno-nota" style="font-size:12px; color:#94a3b8;"></div>
+    </div>
+
     <div class="card hero">
       <div class="title">Totale da Accantonare</div>
       <div class="big-num" id="tot-acc">0,00 €</div>
+      <div id="coeff-badge" style="font-size:12px; color:#94a3b8; margin:-6px 0 10px;"></div>
       <div class="sub-grid">
-        <div>INPS (24%)<span id="tot-inps" style="color:#38bdf8;">0,00 €</span></div>
-        <div>Imposta (5%)<span id="tot-imposta" style="color:#f59e0b;">0,00 €</span></div>
+        <div><em id="lbl-inps" style="font-style:normal">INPS</em><span id="tot-inps" style="color:#38bdf8;">0,00 €</span></div>
+        <div><em id="lbl-imposta" style="font-style:normal">Imposta</em><span id="tot-imposta" style="color:#f59e0b;">0,00 €</span></div>
         <div>Bolli (2€)<span id="tot-bolli" style="color:#a855f7;">0,00 €</span></div>
       </div>
     </div>
@@ -122,10 +128,27 @@
 
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <div class="title" style="margin:0;">Elenco Fatture</div>
+        <div class="title" style="margin:0;" id="titolo-lista">Elenco Fatture</div>
         <button type="button" class="small-btn" id="btn-csv">Scarica CSV</button>
       </div>
       <div id="lista-fatture"></div>
+    </div>
+
+    <div class="card">
+      <div class="title" style="color:#10b981;">Grafici</div>
+      <label>Per anno: fatturato (azzurro) e tasse (arancione)</label>
+      <div id="chart-anni"></div>
+      <label style="margin-top:14px;">Per mese, nell'anno selezionato</label>
+      <div id="chart-mesi"></div>
+    </div>
+
+    <div class="card">
+      <div class="title">Impostazioni</div>
+      <div class="form-group"><label for="set-coeff">Coefficiente di redditività (%)</label><input type="text" id="set-coeff" inputmode="decimal"></div>
+      <div class="form-group"><label for="set-imposta">Imposta sostitutiva (%) · 5 nuova attività, 15 ordinaria</label><input type="text" id="set-imposta" inputmode="decimal"></div>
+      <div class="form-group"><label for="set-inps">Aliquota INPS (%)</label><input type="text" id="set-inps" inputmode="decimal"></div>
+      <button type="button" class="btn" id="btn-set">Salva impostazioni</button>
+      <div class="msg" id="set-msg"></div>
     </div>
   </div>
 
@@ -136,7 +159,7 @@
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
       from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
     import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-             collection, doc, addDoc, deleteDoc, onSnapshot, writeBatch, query }
+             collection, doc, addDoc, deleteDoc, onSnapshot, writeBatch, query, setDoc }
       from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
     // ============================================================
@@ -207,41 +230,64 @@
 
     function colFatture() { return collection(db, 'users', uid, 'fatture'); }
 
-    // ---------- calcoli e rendering ----------
-    function aggiorna() {
-      const totale = fatture.reduce((acc, f) => acc + f.importo, 0);
-      const bolli = fatture.filter(f => f.bollo).length * 2.0;
+    // ---------- impostazioni, calcoli e rendering ----------
+    const ANNO_APERTURA = 2026;                       // partita IVA aperta il 21/09/2026
+    const DEF = { coeff: 78, imposta: 5, inps: 24 };
+    let sett = { ...DEF };
+    let annoSel = new Date().getFullYear();
+    let unsubSet = null;
 
-      const imponibile = totale * 0.86;          // Coefficiente 86%
-      const inps = imponibile * 0.24;            // INPS Gestione Separata 24%
-      const nettoFisc = Math.max(0, imponibile - inps);
-      const imposta = nettoFisc * 0.05;          // 5% nuova attività
+    const annoDi = (f) => parseInt(String(f.data).slice(0, 4)) || ANNO_APERTURA;
+    const meseDi = (f) => parseInt(String(f.data).slice(5, 7)) || 0;
+    const pct = (n) => String(n).replace('.', ',') + '%';
+    const compatto = (n) => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace('.', ',') + 'k' : String(Math.round(n));
 
-      const accantonamento = inps + imposta + bolli;
+    function calcola(lista) {
+      const totale = lista.reduce((a, f) => a + f.importo, 0);
+      const bolli = lista.filter(f => f.bollo).length * 2.0;
+      const imponibile = totale * sett.coeff / 100;
+      const inps = imponibile * sett.inps / 100;
+      const imposta = Math.max(0, imponibile - inps) * sett.imposta / 100;
       const acconto = inps + imposta;
-      const rataGiu = inps + imposta + (acconto * 0.5) + bolli;
-      const rataNov = acconto * 0.5;
-
-      $('tot-acc').textContent = eur(accantonamento);
-      $('tot-inps').textContent = eur(inps);
-      $('tot-imposta').textContent = eur(imposta);
-      $('tot-bolli').textContent = eur(bolli);
-      $('scad-giu').textContent = eur(rataGiu);
-      $('scad-nov').textContent = eur(rataNov);
-      $('tot-fatturato').textContent = eur(totale);
-
-      renderLista();
+      return { totale, bolli, imponibile, inps, imposta, acc: acconto + bolli,
+               giu: acconto * 1.5 + bolli, nov: acconto * 0.5 };
     }
 
-    function renderLista() {
+    function aggiorna() {
+      const anni = new Set([ANNO_APERTURA, new Date().getFullYear(), annoSel]);
+      fatture.forEach(f => anni.add(annoDi(f)));
+      $('anno').innerHTML = [...anni].sort().map(a =>
+        '<option value="' + a + '"' + (a === annoSel ? ' selected' : '') + '>' + a + '</option>').join('');
+
+      const lista = fatture.filter(f => annoDi(f) === annoSel);
+      const r = calcola(lista);
+
+      $('tot-acc').textContent = eur(r.acc);
+      $('tot-inps').textContent = eur(r.inps);
+      $('tot-imposta').textContent = eur(r.imposta);
+      $('tot-bolli').textContent = eur(r.bolli);
+      $('scad-giu').textContent = eur(r.giu);
+      $('scad-nov').textContent = eur(r.nov);
+      $('tot-fatturato').textContent = eur(r.totale);
+      $('tot-fatturato').style.color = r.totale > 85000 ? '#ef4444' : r.totale > 68000 ? '#f59e0b' : '#fff';
+      $('lbl-inps').textContent = 'INPS (' + pct(sett.inps) + ')';
+      $('lbl-imposta').textContent = 'Imposta (' + pct(sett.imposta) + ')';
+      $('coeff-badge').textContent = 'Coefficiente ' + pct(sett.coeff) + ' · imponibile ' + eur(r.imponibile);
+      $('anno-nota').textContent = 'Tasse di competenza ' + annoSel + '. F24 di giugno e novembre ' + (annoSel + 1) + '.';
+      $('titolo-lista').textContent = 'Fatture ' + annoSel;
+
+      renderLista(lista);
+      renderGrafici();
+    }
+
+    function renderLista(lista) {
       const cont = $('lista-fatture');
       cont.innerHTML = '';
-      if (fatture.length === 0) {
-        cont.innerHTML = '<div class="empty">Nessuna fattura registrata</div>';
+      if (lista.length === 0) {
+        cont.innerHTML = '<div class="empty">Nessuna fattura in questo anno</div>';
         return;
       }
-      const ordinate = fatture.slice().sort((a, b) => (b.data > a.data ? 1 : b.data < a.data ? -1 : 0));
-      ordinate.forEach(f => {
+      lista.slice().sort((a, b) => (b.data > a.data ? 1 : b.data < a.data ? -1 : 0)).forEach(f => {
         const row = document.createElement('div');
         row.className = 'invoice-item';
         row.innerHTML = '<div class="info"><b>' + eur(f.importo) + '</b>' +
@@ -261,8 +307,74 @@
       });
     }
 
+    // ---------- grafici (SVG) ----------
+    function barre(labels, serie) {
+      const W = 360, H = 190, L = 34, B = 20, T = 10;
+      const max = Math.max(1, ...serie.flatMap(s => s.v));
+      const gw = (W - L) / labels.length, bw = Math.min(22, gw / (serie.length + 1));
+      let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block">';
+      for (let i = 0; i <= 4; i++) {
+        const y = T + (H - T - B) * (1 - i / 4);
+        s += '<line x1="' + L + '" x2="' + W + '" y1="' + y + '" y2="' + y + '" stroke="#334155" stroke-width="0.5"/>' +
+             '<text x="' + (L - 4) + '" y="' + (y + 3) + '" fill="#94a3b8" font-size="9" text-anchor="end">' + compatto(max * i / 4) + '</text>';
+      }
+      labels.forEach((lab, i) => {
+        const x0 = L + gw * i + (gw - bw * serie.length) / 2;
+        serie.forEach((se, j) => {
+          const h = (H - T - B) * se.v[i] / max;
+          s += '<rect x="' + (x0 + bw * j) + '" y="' + (H - B - h) + '" width="' + (bw - 1) + '" height="' + h + '" fill="' + se.c + '" rx="2"/>';
+        });
+        s += '<text x="' + (L + gw * i + gw / 2) + '" y="' + (H - 6) + '" fill="#94a3b8" font-size="10" text-anchor="middle">' + lab + '</text>';
+      });
+      return s + '</svg>';
+    }
+
+    function renderGrafici() {
+      const fine = Math.max(new Date().getFullYear(), ...fatture.map(annoDi));
+      const anni = [];
+      for (let a = ANNO_APERTURA; a <= fine; a++) anni.push(a);
+      const per = anni.map(a => calcola(fatture.filter(f => annoDi(f) === a)));
+      $('chart-anni').innerHTML = barre(anni.map(String), [
+        { c: '#38bdf8', v: per.map(r => r.totale) },
+        { c: '#f59e0b', v: per.map(r => r.acc) }]);
+
+      const mesi = 'GFMAMGLASOND'.split('');
+      const pm = mesi.map((_, m) => calcola(fatture.filter(f => annoDi(f) === annoSel && meseDi(f) === m + 1)));
+      $('chart-mesi').innerHTML = barre(mesi, [
+        { c: '#38bdf8', v: pm.map(r => r.totale) },
+        { c: '#f59e0b', v: pm.map(r => r.acc) }]);
+    }
+
+    // ---------- impostazioni (sincronizzate su Firestore) ----------
+    function avviaSettings() {
+      if (unsubSet) unsubSet();
+      unsubSet = onSnapshot(doc(db, 'users', uid, 'impostazioni', 'config'), (snap) => {
+        sett = { ...DEF, ...(snap.exists() ? snap.data() : {}) };
+        $('set-coeff').value = String(sett.coeff).replace('.', ',');
+        $('set-imposta').value = String(sett.imposta).replace('.', ',');
+        $('set-inps').value = String(sett.inps).replace('.', ',');
+        aggiorna();
+      }, () => {});
+    }
+
+    $('btn-set').addEventListener('click', async () => {
+      const n = { coeff: parseImporto($('set-coeff').value), imposta: parseImporto($('set-imposta').value), inps: parseImporto($('set-inps').value) };
+      const el = $('set-msg');
+      if (Object.values(n).some(x => isNaN(x) || x < 0 || x > 100) || n.coeff <= 0) {
+        el.style.color = '#ef4444'; el.textContent = 'Valori non validi (ammessi da 0 a 100).'; return;
+      }
+      try {
+        await setDoc(doc(db, 'users', uid, 'impostazioni', 'config'), n);
+        el.style.color = '#10b981';
+        el.textContent = 'Salvato ✓ Coefficiente ' + pct(n.coeff) + ', imposta ' + pct(n.imposta) + ', INPS ' + pct(n.inps);
+      } catch (e) { el.style.color = '#ef4444'; el.textContent = 'Errore: ' + e.message; }
+    });
+
+    $('anno').addEventListener('change', (e) => { annoSel = parseInt(e.target.value); aggiorna(); });
+
     // ---------- sincronizzazione ----------
     function avviaSync() {
+      avviaSettings();
       if (unsub) unsub();
       unsub = onSnapshot(query(colFatture()), (snap) => {
         fatture = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -295,109 +407,4 @@
       $('btn-migrate').disabled = true;
       try {
         for (let i = 0; i < locali.length; i += 400) {
-          const batch = writeBatch(db);
-          locali.slice(i, i + 400).forEach(f => {
-            batch.set(doc(colFatture()), {
-              importo: f.importo,
-              desc: f.desc || '',
-              data: f.data || getOggi(),
-              bollo: !!f.bollo,
-              creato: Date.now()
-            });
-          });
-          await batch.commit();
-        }
-        localStorage.removeItem(LOCAL_KEY);
-        mostraMsg('Fatture importate nel cloud ✓', false);
-        controllaMigrazione();
-      } catch (e) {
-        mostraMsg('Errore importazione: ' + e.message, true);
-      }
-      $('btn-migrate').disabled = false;
-    });
-
-    // ---------- registrazione ----------
-    $('btn-salva').addEventListener('click', async () => {
-      const importo = parseImporto($('amount').value);
-      const desc = $('desc').value.trim();
-      const data = $('date').value || getOggi();
-      const bolloSel = $('bollo').value;
-
-      if (isNaN(importo) || importo <= 0) { mostraMsg('Inserisci un importo valido.', true); return; }
-      const bollo = bolloSel === 'yes' || (bolloSel === 'auto' && importo > 77.47);
-
-      $('btn-salva').disabled = true;
-      try {
-        await addDoc(colFatture(), { importo, desc, data, bollo, creato: Date.now() });
-        $('amount').value = '';
-        $('desc').value = '';
-        $('bollo').value = 'auto';
-        mostraMsg('Fattura registrata ✓', false);
-      } catch (e) {
-        mostraMsg('Errore salvataggio: ' + e.message, true);
-      }
-      $('btn-salva').disabled = false;
-    });
-
-    // ---------- CSV ----------
-    $('btn-csv').addEventListener('click', () => {
-      if (!fatture.length) { mostraMsg('Nessuna fattura da esportare.', true); return; }
-      const righe = ['Data;Importo;Descrizione;Bollo'];
-      fatture.slice().sort((a, b) => (a.data > b.data ? 1 : -1)).forEach(f => {
-        righe.push([
-          f.data,
-          String(f.importo).replace('.', ','),
-          '"' + String(f.desc || '').replace(/"/g, '""') + '"',
-          f.bollo ? 'Sì' : 'No'
-        ].join(';'));
-      });
-      const blob = new Blob(['\ufeff' + righe.join('\n')], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'fatture.csv';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    });
-
-    // ---------- login / logout ----------
-    async function login() {
-      const email = $('email').value.trim();
-      const pass = $('password').value;
-      const msg = $('login-msg');
-      msg.style.color = '#ef4444';
-      if (!email || !pass) { msg.textContent = 'Inserisci email e password.'; return; }
-      $('btn-login').disabled = true;
-      msg.textContent = '';
-      try {
-        await signInWithEmailAndPassword(auth, email, pass);
-      } catch (e) {
-        const known = ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'];
-        msg.textContent = known.includes(e.code) ? 'Email o password non corrette.'
-          : e.code === 'auth/too-many-requests' ? 'Troppi tentativi, riprova più tardi.'
-          : 'Errore di accesso: ' + (e.code || e.message);
-      }
-      $('btn-login').disabled = false;
-    }
-
-    $('btn-login').addEventListener('click', login);
-    $('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
-    $('btn-logout').addEventListener('click', () => signOut(auth));
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        uid = user.uid;
-        $('user-email').textContent = user.email;
-        if (!$('date').value) $('date').value = getOggi();
-        show('view-app');
-        avviaSync();
-      } else {
-        uid = null;
-        if (unsub) { unsub(); unsub = null; }
-        fatture = [];
-        $('password').value = '';
-        show('view-login');
-      }
-    });
-  </script>
-</body>
-</html>
+          const batch = writeBatch(d
