@@ -33,7 +33,7 @@
       background-color: var(--bg);
       color: var(--text);
       padding: 16px;
-      padding-bottom: 50px;
+      padding-bottom: 60px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -254,6 +254,7 @@
       font-size: 15px;
       outline: none;
       width: 100%;
+      -webkit-appearance: none;
     }
     .form-control:focus {
       border-color: var(--accent-green);
@@ -266,18 +267,20 @@
       background: var(--accent-green);
       color: #0f172a;
       border: none;
-      padding: 14px;
+      padding: 15px;
       border-radius: 12px;
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      margin-top: 4px;
+      margin-top: 6px;
+      touch-action: manipulation;
     }
     .btn-submit:active {
+      opacity: 0.85;
       transform: scale(0.98);
     }
     .invoices-list {
@@ -298,10 +301,12 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
+      max-width: 60%;
     }
     .inv-desc {
       font-size: 14px;
       font-weight: 600;
+      word-break: break-word;
     }
     .inv-meta {
       font-size: 11px;
@@ -327,7 +332,7 @@
     .del-btn {
       color: #64748b;
       cursor: pointer;
-      padding: 8px;
+      padding: 10px;
       font-size: 16px;
     }
     .del-btn:hover {
@@ -339,9 +344,26 @@
       color: var(--text-muted);
       font-size: 13px;
     }
+    .toast-msg {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #10b981;
+      color: #0f172a;
+      font-weight: 700;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-size: 14px;
+      display: none;
+      z-index: 1000;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
   </style>
 </head>
 <body>
+
+  <div id="toast" class="toast-msg"><i class="fa-solid fa-check"></i> Fattura registrata!</div>
 
   <header>
     <div class="header-left">
@@ -362,281 +384,4 @@
       <span class="acc-label">Totale da Accantonare</span>
       <span class="acc-badge" id="rate-badge">~24.8% sui ricavi</span>
     </div>
-    <div class="acc-amount-box">
-      <div class="acc-amount" id="total-acc">0,00 €</div>
-      <div class="acc-sub">prudenziale</div>
-    </div>
-    <div class="breakdown-row">
-      <div class="breakdown-item">
-        <span>INPS (24%)</span>
-        <span id="tot-inps" style="color: var(--accent-blue)">0,00 €</span>
-      </div>
-      <div class="breakdown-item">
-        <span>IMPOSTA (5%)</span>
-        <span id="tot-imposta" style="color: var(--accent-yellow)">0,00 €</span>
-      </div>
-      <div class="breakdown-item">
-        <span>BOLLI (2 €)</span>
-        <span id="tot-bolli" style="color: var(--accent-purple)">0,00 €</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- SOGLIA 85K -->
-  <div class="card">
-    <div class="soglia-header">
-      <span>Soglia Forfettario (85.000 €)</span>
-      <span id="soglia-text">0,00 € / 85.000 €</span>
-    </div>
-    <div class="progress-bar-bg">
-      <div class="progress-bar-fill" id="soglia-fill"></div>
-    </div>
-    <div class="soglia-status" id="soglia-status">
-      <i class="fa-solid fa-circle-check"></i>
-      <span>Regime forfettario pienamente operativo</span>
-    </div>
-  </div>
-
-  <!-- RIPARTIZIONE SCADENZE F24 -->
-  <div class="card">
-    <div class="section-title">
-      <span><i class="fa-solid fa-calendar-days" style="color: var(--accent-green); margin-right: 6px;"></i> Scadenze F24</span>
-      <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">Saldo + Acconti</span>
-    </div>
-    <div class="scadenze-grid">
-      <div class="scadenza-box">
-        <h4>Giugno (Saldo + 1° Acc.) <i class="fa-solid fa-sun" style="color: var(--accent-yellow)"></i></h4>
-        <div class="scadenza-val" id="scad-giugno">0,00 €</div>
-        <div class="scadenza-sub">Saldo + 50% Acconti</div>
-      </div>
-      <div class="scadenza-box">
-        <h4>30 Novembre (2° Acc.) <i class="fa-solid fa-snowflake" style="color: var(--accent-blue)"></i></h4>
-        <div class="scadenza-val" id="scad-novembre">0,00 €</div>
-        <div class="scadenza-sub">50% Acconto imposta/INPS</div>
-      </div>
-    </div>
-    <div class="info-alert">
-      <i class="fa-solid fa-circle-info"></i>
-      <div><strong>Agevolazione contratto scuola:</strong> INPS Gestione Separata applicata all'aliquota ridotta del 24% (anziché 26,07%).</div>
-    </div>
-  </div>
-
-  <!-- FORM INSERIMENTO FATTURA (DIRETTO NELLA SCHERMATA) -->
-  <div class="card" style="border: 1px solid #1e475e; background: #132235;">
-    <div class="section-title">
-      <span><i class="fa-solid fa-receipt" style="color: var(--accent-green); margin-right: 6px;"></i> Registra Fattura Incassata</span>
-    </div>
-    <div class="form-group">
-      <label>Importo Lordo Incassato (€)</label>
-      <input type="number" step="0.01" class="form-control" id="inv-amount" placeholder="Es. 1500.00" inputmode="decimal">
-    </div>
-    <div class="form-group">
-      <label>Descrizione / Cliente</label>
-      <input type="text" class="form-control" id="inv-desc" placeholder="Es. Lavori di installazione">
-    </div>
-    <div class="form-group">
-      <label>Data Incasso (modificabile)</label>
-      <input type="date" class="form-control" id="inv-date">
-    </div>
-    <div class="form-group">
-      <label>Marca da Bollo (2 €)</label>
-      <select class="form-control" id="inv-bollo-type">
-        <option value="auto">Automatica (> 77,47 €)</option>
-        <option value="yes">Sì (addebito 2 €)</option>
-        <option value="no">No</option>
-      </select>
-    </div>
-    <button class="btn-submit" onclick="saveInvoice()"><i class="fa-solid fa-plus"></i> Registra Fattura e Calcola</button>
-  </div>
-
-  <!-- ELENCO FATTURE -->
-  <div class="section-title">
-    <span>Fatture Registrate (<span id="count-invoices">0</span>)</span>
-  </div>
-  <div class="invoices-list" id="invoices-container"></div>
-
-  <script>
-    const CONFIG = { coeff: 86, imposta: 5, inps: 24 };
-    let invoices = [];
-
-    try {
-      invoices = JSON.parse(localStorage.getItem('ts_invoices')) || [];
-    } catch (e) {
-      invoices = [];
-    }
-
-    function getTodayString() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-
-    function init() {
-      document.getElementById('inv-date').value = getTodayString();
-      render();
-    }
-
-    function saveInvoice() {
-      const amountInput = document.getElementById('inv-amount');
-      const descInput = document.getElementById('inv-desc');
-      const dateInput = document.getElementById('inv-date');
-      const bolloOpt = document.getElementById('inv-bollo-type').value;
-
-      const amount = parseFloat(amountInput.value);
-      const desc = descInput.value.trim() || 'Fattura senza descrizione';
-      const dateVal = dateInput.value || getTodayString();
-
-      if (!amount || isNaN(amount) || amount <= 0) {
-        alert('Inserisci un importo lordo valido prima di registrare.');
-        return;
-      }
-
-      let hasBollo = false;
-      if (bolloOpt === 'yes') hasBollo = true;
-      else if (bolloOpt === 'auto' && amount > 77.47) hasBollo = true;
-
-      const newInv = {
-        id: Date.now(),
-        amount: amount,
-        desc: desc,
-        date: dateVal,
-        bollo: hasBollo
-      };
-
-      invoices.unshift(newInv);
-      try {
-        localStorage.setItem('ts_invoices', JSON.stringify(invoices));
-      } catch (e) {}
-
-      // Reset campi
-      amountInput.value = '';
-      descInput.value = '';
-      dateInput.value = getTodayString();
-      document.getElementById('inv-bollo-type').value = 'auto';
-
-      render();
-    }
-
-    function deleteInvoice(id) {
-      if (confirm('Eliminare questa fattura?')) {
-        invoices = invoices.filter(item => item.id !== id);
-        try {
-          localStorage.setItem('ts_invoices', JSON.stringify(invoices));
-        } catch (e) {}
-        render();
-      }
-    }
-
-    function render() {
-      const totalRevenue = invoices.reduce((sum, inv) => sum + inv.amount, 0);
-      const totalBolli = invoices.filter(inv => inv.bollo).length * 2.0;
-
-      const imponibileLordo = totalRevenue * (CONFIG.coeff / 100);
-      const quotaINPS = imponibileLordo * (CONFIG.inps / 100);
-      const imponibileNettoFiscale = Math.max(0, imponibileLordo - quotaINPS);
-      const quotaImposta = imponibileNettoFiscale * (CONFIG.imposta / 100);
-
-      const totaleAccantonamento = quotaINPS + quotaImposta + totalBolli;
-      const accontoTotale = quotaINPS + quotaImposta;
-      const rataGiugno = quotaINPS + quotaImposta + (accontoTotale * 0.5) + totalBolli;
-      const rataNovembre = accontoTotale * 0.5;
-
-      document.getElementById('total-acc').innerText = formatEUR(totaleAccantonamento);
-      document.getElementById('tot-inps').innerText = formatEUR(quotaINPS);
-      document.getElementById('tot-imposta').innerText = formatEUR(quotaImposta);
-      document.getElementById('tot-bolli').innerText = formatEUR(totalBolli);
-
-      const percEffettiva = totalRevenue > 0 ? ((totaleAccantonamento / totalRevenue) * 100).toFixed(1) : '24.8';
-      document.getElementById('rate-badge').innerText = `~${percEffettiva}% sui ricavi`;
-
-      document.getElementById('scad-giugno').innerText = formatEUR(rataGiugno);
-      document.getElementById('scad-novembre').innerText = formatEUR(rataNovembre);
-
-      document.getElementById('soglia-text').innerText = `${formatEUR(totalRevenue)} / 85.000 €`;
-      const percSoglia = Math.min(100, (totalRevenue / 85000) * 100);
-      const fillEl = document.getElementById('soglia-fill');
-      fillEl.style.width = `${percSoglia}%`;
-
-      const statusEl = document.getElementById('soglia-status');
-      if (totalRevenue > 85000) {
-        fillEl.style.backgroundColor = 'var(--accent-red)';
-        statusEl.style.color = 'var(--accent-red)';
-        statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <span>Soglia superata!</span>';
-      } else {
-        fillEl.style.backgroundColor = 'var(--accent-green)';
-        statusEl.style.color = 'var(--accent-green)';
-        statusEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> <span>Regime forfettario pienamente operativo</span>';
-      }
-
-      document.getElementById('count-invoices').innerText = invoices.length;
-      const listContainer = document.getElementById('invoices-container');
-
-      if (invoices.length === 0) {
-        listContainer.innerHTML = '<div class="empty-state"><i class="fa-regular fa-folder-open" style="font-size: 26px; margin-bottom: 8px; display: block;"></i>Nessuna fattura registrata. Compila il box sopra per calcolare.</div>';
-      } else {
-        listContainer.innerHTML = invoices.map(inv => {
-          const invImponibile = inv.amount * (CONFIG.coeff / 100);
-          const invInps = invImponibile * (CONFIG.inps / 100);
-          const invTax = Math.max(0, invImponibile - invInps) * (CONFIG.imposta / 100);
-          const invBollo = inv.bollo ? 2 : 0;
-          const invAcc = invInps + invTax + invBollo;
-
-          return `
-            <div class="invoice-card">
-              <div class="inv-info">
-                <div class="inv-desc">${escapeHtml(inv.desc)}</div>
-                <div class="inv-meta">
-                  <span>${formatDate(inv.date)}</span>
-                  ${inv.bollo ? '<span style="color: var(--accent-purple);">• Bollo 2€</span>' : ''}
-                </div>
-              </div>
-              <div class="inv-right">
-                <div>
-                  <div class="inv-amount">${formatEUR(inv.amount)}</div>
-                  <div class="inv-tax">Accantona: ${formatEUR(invAcc)}</div>
-                </div>
-                <i class="fa-regular fa-trash-can del-btn" onclick="deleteInvoice(${inv.id})"></i>
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-    }
-
-    function formatEUR(val) {
-      return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(val);
-    }
-
-    function formatDate(dateStr) {
-      if (!dateStr) return '';
-      const parts = dateStr.split('-');
-      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      return dateStr;
-    }
-
-    function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    function exportCSV() {
-      if (invoices.length === 0) {
-        alert('Nessuna fattura presente da esportare.');
-        return;
-      }
-      let csv = 'Data;Descrizione;Importo Lordo;Marca da Bollo;Accantonamento Stimato\n';
-      invoices.forEach(inv => {
-        const invImponibile = inv.amount * (CONFIG.coeff / 100);
-        const invInps = invImponibile * (CONFIG.inps / 100);
-        const invTax = Math.max(0, invImponibile - invInps) * (CONFIG.imposta / 100);
-        const invBollo = inv.bollo ? 2 : 0;
-        const invAcc = invInps + invTax + invBollo;
-        csv += `${inv.date};"${inv.desc.replace(/"/g, '""')}";${inv.amount.toFixed(2)};${invBollo};${invAcc.toFixed(2)}\n`;
-      });
-
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('d
+    <div class="acc-amount-box
