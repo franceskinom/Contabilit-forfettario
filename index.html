@@ -6,7 +6,9 @@
   <title>TaxSaver</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    body { background: #0f172a; color: #f8fafc; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+    body { background: #0f172a; color: #f8fafc; padding: 14px; max-width: 520px; margin: 0 auto; }
+    .stack { display: flex; flex-direction: column; gap: 14px; }
+    .hidden { display: none !important; }
     .card { background: #1e293b; border-radius: 14px; padding: 16px; border: 1px solid #334155; }
     .hero { background: linear-gradient(135deg, #132d3f, #0f1f2e); border: 1px solid #0284c7; }
     .title { font-size: 13px; font-weight: bold; color: #38bdf8; text-transform: uppercase; margin-bottom: 6px; }
@@ -16,113 +18,386 @@
     .sub-grid span { font-weight: bold; font-size: 14px; margin-top: 2px; }
     .form-group { margin-bottom: 12px; }
     label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; font-weight: 600; }
-    input, select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 15px; outline: none; }
-    input:focus { border-color: #10b981; }
+    input, select { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 16px; outline: none; color-scheme: dark; min-height: 46px; }
+    input[type="date"] { -webkit-appearance: none; appearance: none; display: block; }
+    input:focus, select:focus { border-color: #10b981; }
     .btn { width: 100%; background: #10b981; color: #0f172a; font-weight: bold; font-size: 16px; border: none; padding: 14px; border-radius: 10px; cursor: pointer; }
     .btn:active { opacity: 0.8; }
-    .invoice-item { background: #0f172a; border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
-    .del-btn { background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+    .msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+    .invoice-item { background: #0f172a; border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid #334155; }
+    .invoice-item .info { font-size: 12px; color: #94a3b8; min-width: 0; }
+    .invoice-item .info b { color: #fff; font-size: 15px; display: block; }
+    .del-btn { background: #ef4444; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
     .scad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
     .scad-box { background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid #334155; }
     .scad-box h4 { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
     .scad-box span { font-size: 16px; font-weight: bold; color: #38bdf8; }
+    .small-btn { background: #334155; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+    .empty { font-size: 13px; color: #64748b; text-align: center; padding: 10px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #94a3b8; gap: 10px; }
+    .topbar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .banner { background: #422006; border: 1px solid #f59e0b; border-radius: 12px; padding: 12px; font-size: 13px; }
+    .banner button { margin-top: 8px; background: #f59e0b; color: #0f172a; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
   </style>
 </head>
 <body>
 
-  <!-- SCHEDA ACCANTONAMENTO -->
-  <div class="card hero">
-    <div class="title">Totale da Accantonare</div>
-    <div class="big-num" id="tot-acc">0,00 €</div>
-    <div class="sub-grid">
-      <div>INPS (24%)<span id="tot-inps" style="color: #38bdf8;">0,00 €</span></div>
-      <div>Imposta (5%)<span id="tot-imposta" style="color: #f59e0b;">0,00 €</span></div>
-      <div>Bolli (2€)<span id="tot-bolli" style="color: #a855f7;">0,00 €</span></div>
-    </div>
-  </div>
-
-  <!-- SCADENZE F24 -->
-  <div class="card">
-    <div class="title" style="color: #10b981;">Scadenze F24 (Saldo + Acconti)</div>
-    <div class="scad-grid">
-      <div class="scad-box">
-        <h4>Giugno (Saldo + 50%)</h4>
-        <span id="scad-giu">0,00 €</span>
+  <!-- LOGIN -->
+  <div id="view-login" class="stack hidden">
+    <div class="card" style="margin-top:40px;">
+      <div class="title" style="color:#10b981;">TaxSaver · Accedi</div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" autocomplete="username" inputmode="email">
       </div>
-      <div class="scad-box">
-        <h4>Novembre (50%)</h4>
-        <span id="scad-nov">0,00 €</span>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="current-password">
+      </div>
+      <button type="button" class="btn" id="btn-login">Accedi</button>
+      <div class="msg" id="login-msg"></div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="view-app" class="stack hidden">
+
+    <div class="topbar">
+      <span id="user-email"></span>
+      <button type="button" class="small-btn" id="btn-logout">Esci</button>
+    </div>
+
+    <div id="migrate-banner" class="banner hidden">
+      <div id="migrate-text"></div>
+      <button type="button" id="btn-migrate">Importa nel cloud</button>
+    </div>
+
+    <div class="card hero">
+      <div class="title">Totale da Accantonare</div>
+      <div class="big-num" id="tot-acc">0,00 €</div>
+      <div class="sub-grid">
+        <div>INPS (24%)<span id="tot-inps" style="color:#38bdf8;">0,00 €</span></div>
+        <div>Imposta (5%)<span id="tot-imposta" style="color:#f59e0b;">0,00 €</span></div>
+        <div>Bolli (2€)<span id="tot-bolli" style="color:#a855f7;">0,00 €</span></div>
       </div>
     </div>
-    <div style="font-size: 11px; color: #94a3b8; margin-top: 8px;">
-      Soglia Forfettario: <strong id="tot-fatturato" style="color:#fff;">0,00 €</strong> / 85.000 €
+
+    <div class="card">
+      <div class="title" style="color:#10b981;">Scadenze F24 (Saldo + Acconti)</div>
+      <div class="scad-grid">
+        <div class="scad-box"><h4>Giugno (Saldo + 50%)</h4><span id="scad-giu">0,00 €</span></div>
+        <div class="scad-box"><h4>Novembre (50%)</h4><span id="scad-nov">0,00 €</span></div>
+      </div>
+      <div style="font-size:11px; color:#94a3b8; margin-top:8px;">
+        Soglia Forfettario: <strong id="tot-fatturato" style="color:#fff;">0,00 €</strong> / 85.000 €
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title" style="color:#10b981;">Registra Nuova Fattura</div>
+      <div class="form-group">
+        <label for="amount">Importo Lordo (€)</label>
+        <input type="text" id="amount" placeholder="Es. 2294,13" inputmode="decimal" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="desc">Descrizione / Cliente</label>
+        <input type="text" id="desc" placeholder="Descrizione lavoro" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="date">Data Incasso</label>
+        <input type="date" id="date">
+      </div>
+      <div class="form-group">
+        <label for="bollo">Marca da Bollo (2 €)</label>
+        <select id="bollo">
+          <option value="auto">Automatica (&gt; 77,47 €)</option>
+          <option value="yes">Sì (addebito)</option>
+          <option value="no">No</option>
+        </select>
+      </div>
+      <button type="button" class="btn" id="btn-salva">Registra Fattura</button>
+      <div class="msg" id="msg"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div class="title" style="margin:0;">Elenco Fatture</div>
+        <button type="button" class="small-btn" id="btn-csv">Scarica CSV</button>
+      </div>
+      <div id="lista-fatture"></div>
     </div>
   </div>
 
-  <!-- REGISTRAZIONE -->
-  <div class="card">
-    <div class="title" style="color: #10b981;">Registra Nuova Fattura</div>
-    
-    <div class="form-group">
-      <label>Importo Lordo (€)</label>
-      <input type="text" id="amount" placeholder="Es. 2294.13" inputmode="decimal">
-    </div>
+  <div id="view-error" class="card hidden" style="margin-top:40px; color:#fca5a5; font-size:14px;"></div>
 
-    <div class="form-group">
-      <label>Descrizione / Cliente</label>
-      <input type="text" id="desc" placeholder="Descrizione lavoro">
-    </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
+      from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+             collection, doc, addDoc, deleteDoc, onSnapshot, writeBatch, query }
+      from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-    <div class="form-group">
-      <label>Data Incasso</label>
-      <input type="date" id="date">
-    </div>
+    // ============================================================
+    //  INCOLLA QUI IL TUO firebaseConfig (da Firebase Console)
+    // ============================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyCfRgvQeO3uViYcMeTy9asQjqL4foU3-Tc",
+      authDomain: "contabilita-56b30.firebaseapp.com",
+      projectId: "contabilita-56b30",
+      storageBucket: "contabilita-56b30.firebasestorage.app",
+      messagingSenderId: "388326738041",
+      appId: "1:388326738041:web:92689dc05ca3b7a3fc6ca8"
+    };
+    // ============================================================
 
-    <div class="form-group">
-      <label>Marca da Bollo (2 €)</label>
-      <select id="bollo">
-        <option value="auto">Automatica (> 77,47 €)</option>
-        <option value="yes">Sì (addebito)</option>
-        <option value="no">No</option>
-      </select>
-    </div>
+    const $ = (id) => document.getElementById(id);
+    const LOCAL_KEY = 'ts_f';
 
-    <button type="button" class="btn" id="btn-salva">Registra Fattura</button>
-  </div>
+    function show(view) {
+      ['view-login', 'view-app', 'view-error'].forEach(v => $(v).classList.toggle('hidden', v !== view));
+    }
 
-  <!-- LISTA FATTURE -->
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-      <div class="title" style="margin:0;">Elenco Fatture</div>
-      <button onclick="esportaCSV()" style="background:#334155; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">Scarica CSV</button>
-    </div>
-    <div id="lista-fatture"></div>
-  </div>
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf('INCOLLA') === 0) {
+      $('view-error').textContent = 'Configurazione Firebase mancante: incolla il tuo firebaseConfig in index.html.';
+      show('view-error');
+      throw new Error('firebaseConfig mancante');
+    }
 
-  <script>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+
     let fatture = [];
-    try {
-      fatture = JSON.parse(localStorage.getItem('ts_f')) || [];
-    } catch(e) { fatture = []; }
+    let uid = null;
+    let unsub = null;
+
+    // ---------- utilità ----------
+    const eur = (n) => n.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 
     function getOggi() {
       const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
+    function parseImporto(str) {
+      let s = String(str).trim().replace(/\s/g, '').replace('€', '');
+      if (s.indexOf(',') !== -1) s = s.replace(/\./g, '').replace(',', '.');
+      const n = parseFloat(s);
+      return isNaN(n) ? NaN : n;
+    }
+
+    function formatData(iso) {
+      const p = String(iso).split('-');
+      return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function mostraMsg(testo, errore) {
+      const el = $('msg');
+      el.textContent = testo;
+      el.style.color = errore ? '#ef4444' : '#10b981';
+    }
+
+    function colFatture() { return collection(db, 'users', uid, 'fatture'); }
+
+    // ---------- calcoli e rendering ----------
     function aggiorna() {
       const totale = fatture.reduce((acc, f) => acc + f.importo, 0);
       const bolli = fatture.filter(f => f.bollo).length * 2.0;
 
-      const imponibile = totale * 0.86; // Coeff 86%
-      const inps = imponibile * 0.24;   // INPS Separata 24%
+      const imponibile = totale * 0.86;          // Coefficiente 86%
+      const inps = imponibile * 0.24;            // INPS Gestione Separata 24%
       const nettoFisc = Math.max(0, imponibile - inps);
-      const imposta = nettoFisc * 0.05; // 5% nuova attività
+      const imposta = nettoFisc * 0.05;          // 5% nuova attività
 
       const accantonamento = inps + imposta + bolli;
       const acconto = inps + imposta;
       const rataGiu = inps + imposta + (acconto * 0.5) + bolli;
       const rataNov = acconto * 0.5;
 
-      document.getElementById('tot-acc').innerText = accantonamento.toLocaleString('it-IT', {style:'currency', currency:'EUR'});
-      document.getElementById('tot-inps').innerText = inps.toLocaleString('it-IT
+      $('tot-acc').textContent = eur(accantonamento);
+      $('tot-inps').textContent = eur(inps);
+      $('tot-imposta').textContent = eur(imposta);
+      $('tot-bolli').textContent = eur(bolli);
+      $('scad-giu').textContent = eur(rataGiu);
+      $('scad-nov').textContent = eur(rataNov);
+      $('tot-fatturato').textContent = eur(totale);
+
+      renderLista();
+    }
+
+    function renderLista() {
+      const cont = $('lista-fatture');
+      cont.innerHTML = '';
+      if (fatture.length === 0) {
+        cont.innerHTML = '<div class="empty">Nessuna fattura registrata</div>';
+        return;
+      }
+      const ordinate = fatture.slice().sort((a, b) => (b.data > a.data ? 1 : b.data < a.data ? -1 : 0));
+      ordinate.forEach(f => {
+        const row = document.createElement('div');
+        row.className = 'invoice-item';
+        row.innerHTML = '<div class="info"><b>' + eur(f.importo) + '</b>' +
+          escapeHtml(f.desc || 'Senza descrizione') + ' · ' + formatData(f.data) +
+          (f.bollo ? ' · bollo' : '') + '</div>';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'del-btn';
+        btn.textContent = 'Elimina';
+        btn.addEventListener('click', async () => {
+          if (!confirm('Eliminare questa fattura?')) return;
+          try { await deleteDoc(doc(db, 'users', uid, 'fatture', f.id)); }
+          catch (e) { mostraMsg('Errore eliminazione: ' + e.message, true); }
+        });
+        row.appendChild(btn);
+        cont.appendChild(row);
+      });
+    }
+
+    // ---------- sincronizzazione ----------
+    function avviaSync() {
+      if (unsub) unsub();
+      unsub = onSnapshot(query(colFatture()), (snap) => {
+        fatture = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        aggiorna();
+        controllaMigrazione();
+      }, (err) => {
+        mostraMsg('Errore di sincronizzazione: ' + err.message, true);
+      });
+    }
+
+    // ---------- migrazione dati locali ----------
+    function leggiLocali() {
+      try {
+        const arr = JSON.parse(localStorage.getItem(LOCAL_KEY));
+        return Array.isArray(arr) ? arr.filter(f => f && typeof f.importo === 'number') : [];
+      } catch (e) { return []; }
+    }
+
+    function controllaMigrazione() {
+      const locali = leggiLocali();
+      $('migrate-banner').classList.toggle('hidden', locali.length === 0);
+      if (locali.length) {
+        $('migrate-text').textContent = 'Ho trovato ' + locali.length + ' fatture salvate solo in questo browser. Vuoi importarle nel cloud?';
+      }
+    }
+
+    $('btn-migrate').addEventListener('click', async () => {
+      const locali = leggiLocali();
+      if (!locali.length) return;
+      $('btn-migrate').disabled = true;
+      try {
+        for (let i = 0; i < locali.length; i += 400) {
+          const batch = writeBatch(db);
+          locali.slice(i, i + 400).forEach(f => {
+            batch.set(doc(colFatture()), {
+              importo: f.importo,
+              desc: f.desc || '',
+              data: f.data || getOggi(),
+              bollo: !!f.bollo,
+              creato: Date.now()
+            });
+          });
+          await batch.commit();
+        }
+        localStorage.removeItem(LOCAL_KEY);
+        mostraMsg('Fatture importate nel cloud ✓', false);
+        controllaMigrazione();
+      } catch (e) {
+        mostraMsg('Errore importazione: ' + e.message, true);
+      }
+      $('btn-migrate').disabled = false;
+    });
+
+    // ---------- registrazione ----------
+    $('btn-salva').addEventListener('click', async () => {
+      const importo = parseImporto($('amount').value);
+      const desc = $('desc').value.trim();
+      const data = $('date').value || getOggi();
+      const bolloSel = $('bollo').value;
+
+      if (isNaN(importo) || importo <= 0) { mostraMsg('Inserisci un importo valido.', true); return; }
+      const bollo = bolloSel === 'yes' || (bolloSel === 'auto' && importo > 77.47);
+
+      $('btn-salva').disabled = true;
+      try {
+        await addDoc(colFatture(), { importo, desc, data, bollo, creato: Date.now() });
+        $('amount').value = '';
+        $('desc').value = '';
+        $('bollo').value = 'auto';
+        mostraMsg('Fattura registrata ✓', false);
+      } catch (e) {
+        mostraMsg('Errore salvataggio: ' + e.message, true);
+      }
+      $('btn-salva').disabled = false;
+    });
+
+    // ---------- CSV ----------
+    $('btn-csv').addEventListener('click', () => {
+      if (!fatture.length) { mostraMsg('Nessuna fattura da esportare.', true); return; }
+      const righe = ['Data;Importo;Descrizione;Bollo'];
+      fatture.slice().sort((a, b) => (a.data > b.data ? 1 : -1)).forEach(f => {
+        righe.push([
+          f.data,
+          String(f.importo).replace('.', ','),
+          '"' + String(f.desc || '').replace(/"/g, '""') + '"',
+          f.bollo ? 'Sì' : 'No'
+        ].join(';'));
+      });
+      const blob = new Blob(['\ufeff' + righe.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'fatture.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+
+    // ---------- login / logout ----------
+    async function login() {
+      const email = $('email').value.trim();
+      const pass = $('password').value;
+      const msg = $('login-msg');
+      msg.style.color = '#ef4444';
+      if (!email || !pass) { msg.textContent = 'Inserisci email e password.'; return; }
+      $('btn-login').disabled = true;
+      msg.textContent = '';
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } catch (e) {
+        const known = ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'];
+        msg.textContent = known.includes(e.code) ? 'Email o password non corrette.'
+          : e.code === 'auth/too-many-requests' ? 'Troppi tentativi, riprova più tardi.'
+          : 'Errore di accesso: ' + (e.code || e.message);
+      }
+      $('btn-login').disabled = false;
+    }
+
+    $('btn-login').addEventListener('click', login);
+    $('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+    $('btn-logout').addEventListener('click', () => signOut(auth));
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        uid = user.uid;
+        $('user-email').textContent = user.email;
+        if (!$('date').value) $('date').value = getOggi();
+        show('view-app');
+        avviaSync();
+      } else {
+        uid = null;
+        if (unsub) { unsub(); unsub = null; }
+        fatture = [];
+        $('password').value = '';
+        show('view-login');
+      }
+    });
+  </script>
+</body>
+</html>
